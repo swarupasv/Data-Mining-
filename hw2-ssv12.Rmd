@@ -1,0 +1,833 @@
+---
+title: "Data Mining Homework 2"
+author: "Swarupa Vaishampayan"
+date: "January 25, 2018"
+output: html_document
+---
+Import required libraries.
+
+```{r}
+library(ggplot2) #Used for plotting graphs
+library(MASS)    #Used for regression
+library(fBasics) #Used for generating summary table
+library(car)
+library(ROCR)
+```
+
+
+1. Read the csv file into a variable. And summarize it.
+
+Predictor variables: V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20
+Response variable: V21
+
+
+```{r}
+dataframe=read.csv("german_credit_data.csv",header = T,sep = ',') #load file in dataframe
+View(dataframe) #Views dataframe in separate window
+summary(dataframe) #produces summary of dataframe
+```
+
+2.a)
+Categorical Variables: V1,V3,V4,V6,V7,V9,V10,V12,V14,V15,V17,V19,V20
+Numerical Variables: V2,V5,V8,V11,V13,V16,V18,V21
+
+```{r}
+df=dataframe[,c("V2","V5","V11","V13","V16", "V21")]
+basicStats(df)[c("Mean", "Stdev", "Median", "1. Quartile", "3. Quartile"),]
+```
+
+
+2.b)
+Density plot for V2. It has right skewed distribution.
+
+```{r}
+ggplot(data=df, aes(x=V2)) + geom_density()
+```
+
+2.b)
+Density plot for V5. It has right skewed distribution.
+```{r}
+ggplot(data=df, aes(x=V5)) + geom_density()
+
+```
+
+2.b)
+Density plot for V11. It has left skewed distribution.
+```{r}
+ggplot(data=df, aes(x=V11)) + geom_density()
+
+```
+
+2.b)
+Density plot for V13. It has right skewed distribution.
+```{r}
+ggplot(data=df, aes(x=V13)) + geom_density()
+
+```
+
+2.b)
+Density plot for V16. It has right skewed distribution.
+```{r}
+ggplot(data=df, aes(x=V16)) + geom_density()
+```
+
+2.b)
+Density plot of V21. It has right skewed distribution.
+```{r}
+ggplot(data=df, aes(x=V21)) + geom_density()
+```
+
+2.c)
+Conditional Histogram plot for categorical variable V1
+```{r}
+ggplot(dataframe, aes(x =V21,fill=V1)) + geom_histogram()
+```
+
+2.c)
+Conditional Histogram plot for categorical variable V7
+```{r}
+ggplot(dataframe, aes(x =V21,fill=V7)) + geom_histogram()
+
+```
+
+2.c)
+Conditional Histogram plot for categorical variable V10
+```{r}
+ggplot(dataframe, aes(x =V21,fill=V10)) + geom_histogram()
+```
+
+2.c)
+Conditional Histogram plot for categorical variable V15
+```{r}
+ggplot(dataframe, aes(x =V21,fill=V15)) + geom_histogram()
+```
+
+2.c)
+Conditional Histogram plot for categorical variable V19
+```{r}
+ggplot(dataframe, aes(x =V21,fill=V19)) + geom_histogram()
+```
+
+3.a)
+
+```{r}
+n=length(dataframe$V21)
+n
+dataframe$V21=recode(dataframe$V21,"'1'=0;else=1")
+```
+
+
+3.a)
+create matrix for all the predictor variables using dummies.
+```{r}
+X = model.matrix(V21~.,data=dataframe)[,-1]
+X[1:3,]
+```
+
+3.a) Applied Logistic regression on above X to predict V21 using 10 fold cross validation.
+Then calculated accuracy, precision,recall ratio,F1
+```{r}
+
+#Create 10 equally size folds
+folds <- cut(seq(1,nrow(dataframe)),breaks=10,labels=FALSE)
+error=dim(10)
+precision = dim(10)
+F1=dim(10)
+recall_r=dim(10)
+#Perform 10 fold cross validation
+for(i in 1:10){
+    
+    testing <- which(folds==i,arr.ind=TRUE)
+    xtrain = X[-testing,]
+    xtest = X[testing,]
+    ytest <- dataframe$V21[testing]
+    ytrain <- dataframe$V21[-testing]
+    m1 = glm(V21~.,family=binomial,data=data.frame(V21=ytrain,xtrain))
+    ptest = predict(m1,newdata=data.frame(xtest),type="response")
+    btest=floor(ptest+0.6)  ## use floor function to clamp the value to 0 or 1
+    conf.matrix = table(ytest,btest)
+    error[i]=(conf.matrix[1,2]+conf.matrix[2,1])/100
+    precision[i]=conf.matrix[1,1]/(conf.matrix[1,1]+conf.matrix[2,1])
+    recall_r[i]=conf.matrix[1,1]/(conf.matrix[1,1]+conf.matrix[1,2])
+    F1[i]=2*precision[i]*recall_r[i]/(precision[i]+recall_r[i])
+    }
+accuracy=1-mean(error)
+accuracy 
+pr=mean(precision)
+pr
+r=mean(recall_r)
+r 
+f=mean(F1)
+f
+
+```
+
+3.a) Plot lift chart for above model.
+```{r}
+daf=cbind(ptest,ytest)
+daf[1:20,]
+```
+
+3.a)
+```{r}
+rank.df=as.data.frame(daf[order(ptest,decreasing=TRUE),])
+colnames(rank.df) = c('predicted','actual')
+rank.df[1:20,]
+```
+
+3.a)
+
+```{r}
+baserate=mean(ytest)
+baserate
+```
+
+3.a)
+```{r}
+ax=dim(n)
+ay.base=dim(n)
+ay.pred=dim(n)
+ax[1]=1
+ay.base[1]=baserate
+ay.pred[1]=rank.df$actual[1]
+for (i in 2:n) {
+  ax[i]=i
+  ay.base[i]=baserate*i ## uniformly increase with rate xbar
+  ay.pred[i]=ay.pred[i-1]+rank.df$actual[i]
+}
+
+df=cbind(rank.df,ay.pred,ay.base)
+df[1:20,]
+```
+
+3.a)
+```{r}
+plot(ax,ay.pred,xlab="number of cases",ylab="number of successes",main="Lift Chart")
+points(ax,ay.base,type="l")
+```
+
+3.a) Plot ROC curve for the original model.
+```{r}
+cut=1/2
+gg1=floor(ptest+(1-cut))
+truepos <- ytest==1 & ptest>=cut 
+trueneg <- ytest==0 & ptest<cut
+# Sensitivity (predict default when it does happen)
+sum(truepos)/sum(ytest==1)
+```
+
+3.a)
+```{r}
+# Specificity (predict no default when it does not happen)
+sum(trueneg)/sum(ytest==0) 
+```
+
+3.a)
+```{r}
+suppressWarnings( library(ROCR))
+## input is a data frame consisting of two columns
+## predictions in first column and actual outcomes in the second 
+
+## ROC for hold-out period
+data=data.frame(predictions=ptest,labels=ytest)
+data[1:10,]
+```
+3.a)
+```{r}
+pred <- prediction(data$predictions,data$labels)
+str(pred)
+```
+
+3.a)
+```{r}
+perf <- performance(pred, "sens", "fpr")
+str(perf)
+```
+3.a)
+```{r}
+plot(perf)
+```
+
+3.a) 
+create matrix for X1 with diffrent number of predictors than the original model
+```{r}
+X1 = model.matrix(V21~V1+V2+V3+V4+V8+V9+V14,data=dataframe)[,-1]
+X1[1:3,]
+```
+
+3.a)
+Applied Logistic regression on above X1 with varied predictors to predict V21 using 10 fold cross validation. This is model 1.
+Then calculated accuracy, precision,recall ratio,F1
+```{r}
+
+#Create 10 equally size folds
+folds <- cut(seq(1,nrow(dataframe)),breaks=10,labels=FALSE)
+error1 = dim(10)
+precision1 = dim(10)
+F1_1=dim(10)
+recall_r1=dim(10)
+#Perform 10 fold cross validation
+for(i in 1:10){
+    
+    testing1 <- which(folds==i,arr.ind=TRUE)
+    xtrain1 = X1[-testing1,]
+    xtest1 = X1[testing1,]
+    ytest1 <- dataframe$V21[testing1]
+    ytrain1 <- dataframe$V21[-testing1]
+    m2 = glm(V21~.,family=binomial,data = data.frame(V21=ytrain1,xtrain1))
+    ptest1 = predict(m2,newdata=data.frame(xtest1),type="response")
+    btest1=floor(ptest1+0.5)  ## use floor function to clamp the value to 0 or 1
+    conf.matrix1 = table(ytest1,btest1)
+    error1[i]=(conf.matrix1[1,2]+conf.matrix1[2,1])/100
+    precision1[i]=conf.matrix1[1,1]/(conf.matrix1[1,1]+conf.matrix1[2,1])
+    recall_r1[i]=conf.matrix1[1,1]/(conf.matrix1[1,1]+conf.matrix1[1,2])
+    F1_1[i]=2*precision1[i]*recall_r1[i]/(precision1[i]+recall_r1[i])
+    }
+accuracy1=1-mean(error1)
+accuracy1 
+pr1=mean(precision1)
+pr1 
+r1=mean(recall_r1)
+r1 
+f1=mean(F1_1)
+f1 
+```
+
+3.a) Plot Lift curve for model 1
+```{r}
+daf=cbind(ptest1,ytest1)
+daf[1:20,]
+```
+
+3.a)
+```{r}
+rank.df=as.data.frame(daf[order(ptest1,decreasing=TRUE),])
+colnames(rank.df) = c('predicted','actual')
+rank.df[1:20,]
+```
+
+3.a)
+```{r}
+baserate=mean(ytest1)
+baserate
+```
+
+3.a)
+```{r}
+ax=dim(n)
+ay.base=dim(n)
+ay.pred=dim(n)
+ax[1]=1
+ay.base[1]=baserate
+ay.pred[1]=rank.df$actual[1]
+for (i in 2:n) {
+  ax[i]=i*1
+  ay.base[i]=baserate*i ## uniformly increase with rate xbar
+  ay.pred[i]=ay.pred[i-1]+rank.df$actual[i]
+}
+
+df=cbind(rank.df,ay.pred,ay.base)
+df[1:20,]
+```
+
+3.a)
+```{r}
+plot(ax,ay.pred,xlab="number of cases",ylab="number of successes",main="Lift chart")
+points(ax,ay.base,type="l")
+```
+
+3.a) Plot ROC curve model 1
+```{r}
+cut=1/2
+gg1=floor(ptest1+(1-cut))
+truepos <- ytest1==1 & ptest1>=cut 
+trueneg <- ytest1==0 & ptest1<cut
+# Sensitivity (predict default when it does happen)
+sum(truepos)/sum(ytest1==1)
+```
+
+3.a)
+```{r}
+# Specificity (predict no default when it does not happen)
+sum(trueneg)/sum(ytest1==0) 
+```
+
+3.a)
+```{r}
+suppressWarnings( library(ROCR))
+## input is a data frame consisting of two columns
+## predictions in first column and actual outcomes in the second 
+
+## ROC for hold-out period
+data=data.frame(predictions=ptest1,labels=ytest1)
+data[1:10,]
+```
+
+3.a)
+```{r}
+pred <- prediction(data$predictions,data$labels)
+str(pred)
+```
+
+3.a)
+```{r}
+perf <- performance(pred, "sens", "fpr")
+str(perf)
+```
+
+3.a)
+```{r}
+plot(perf)
+```
+
+3.a) 
+create matrix for X2 with diffrent number of predictors than the original model
+
+```{r}
+X2 = model.matrix(V21~V8+V9+V10+V11+V13+V14+V15+V16+V17+V18+V19+V20,data=dataframe)[,-1]
+X2[1:3,]
+```
+
+3.a)
+Applied Logistic regression on above X2 with varied predictors to predict V21 using 10 fold cross validation.
+Then calculated accuracy, precision,recall ratio,F1
+
+```{r}
+
+#Create 10 equally size folds
+folds <- cut(seq(1,nrow(dataframe)),breaks=10,labels=FALSE)
+error2 = dim(10)
+precision2 = dim(10)
+F1_2=dim(10)
+recall_r2=dim(10)
+
+#Perform 10 fold cross validation
+for(i in 1:10){
+    
+    testing2 <- which(folds==i,arr.ind=TRUE)
+    xtrain2 = X2[-testing2,]
+    xtest2 = X2[testing2,]
+    ytest2 <- dataframe$V21[testing2]
+    ytrain2 <- dataframe$V21[-testing2]
+    m3 = glm(V21~.,family=binomial,data = data.frame(V21=ytrain2,xtrain2))
+    ptest2 = predict(m3,newdata=data.frame(xtest2),type="response")
+    btest2=floor(ptest2+0.5)  ## use floor function to clamp the value to 0 or 1
+    conf.matrix2 = table(ytest2,btest2)
+    error2[i]=(conf.matrix2[1,2]+conf.matrix2[2,1])/100
+    precision2[i]=conf.matrix2[1,1]/(conf.matrix2[1,1]+conf.matrix2[2,1])
+    recall_r2[i]=conf.matrix2[1,1]/(conf.matrix2[1,1]+conf.matrix2[1,2])
+    F1_2[i]=2*precision2[i]*recall_r2[i]/(precision2[i]+recall_r2[i])
+    }
+accuracy2=1-mean(error2)
+accuracy2
+pr2=mean(precision)
+pr2
+r2=mean(recall_r)
+r2 
+f2=mean(F1)
+f2
+
+```
+
+3.a) Plot Lift chart for model 2
+```{r}
+daf=cbind(ptest2,ytest2)
+daf[1:20,]
+```
+
+3.a)
+```{r}
+rank.df=as.data.frame(daf[order(ptest2,decreasing=TRUE),])
+colnames(rank.df) = c('predicted','actual')
+rank.df[1:20,]
+```
+
+3.a)
+```{r}
+baserate=mean(ytest2)
+baserate
+```
+
+3.a)
+```{r}
+ax=dim(n)
+ay.base=dim(n)
+ay.pred=dim(n)
+ax[1]=1
+ay.base[1]=baserate
+ay.pred[1]=rank.df$actual[1]
+for (i in 2:n) {
+  ax[i]=i
+  ay.base[i]=baserate*i ## uniformly increase with rate xbar
+  ay.pred[i]=ay.pred[i-1]+rank.df$actual[i]
+}
+
+df=cbind(rank.df,ay.pred,ay.base)
+df[1:20,]
+```
+
+3.a)
+```{r}
+plot(ax,ay.pred,xlab="number of cases",ylab="number of successes",main="Lift chart")
+points(ax,ay.base,type="l")
+```
+
+3.a) Plot ROC curve model 2
+```{r}
+cut=1/2
+gg1=floor(ptest2+(1-cut))
+truepos <- ytest2==1 & ptest2>=cut 
+trueneg <- ytest2==0 & ptest2<cut
+# Sensitivity (predict default when it does happen)
+sum(truepos)/sum(ytest2==1)
+```
+
+3.a)
+```{r}
+# Specificity (predict no default when it does not happen)
+sum(trueneg)/sum(ytest2==0) 
+```
+
+3.a)
+```{r}
+suppressWarnings( library(ROCR))
+## input is a data frame consisting of two columns
+## predictions in first column and actual outcomes in the second 
+
+## ROC for hold-out period
+data=data.frame(predictions=ptest2,labels=ytest2)
+data[1:10,]
+```
+
+3.a)
+```{r}
+pred <- prediction(data$predictions,data$labels)
+str(pred)
+```
+
+3.a)
+```{r}
+perf <- performance(pred, "sens", "fpr")
+str(perf)
+```
+
+3.a)
+```{r}
+plot(perf)
+```
+
+3.a) 
+create matrix for X3 with diffrent number of predictors than the original model
+
+```{r}
+X3 = model.matrix(V21~V1+V2+V4+V5+V6+V8+V14,data=dataframe)[,-1]
+X3[1:3,]
+
+```
+
+3.a)
+Applied Logistic regression on above X3 with varied predictors to predict V21 using 10 fold cross validation.
+Then calculated accuracy, precision,recall ratio,F1
+
+```{r}
+
+#Create 10 equally size folds
+folds <- cut(seq(1,nrow(dataframe)),breaks=10,labels=FALSE)
+error3 = dim(10)
+precision3 = dim(10)
+F1_3=dim(10)
+recall_r3=dim(10)
+#Perform 10 fold cross validation
+for(i in 1:10){
+    
+    testing3 <- which(folds==i,arr.ind=TRUE)
+    xtrain3 = X3[-testing3,]
+    xtest3 = X3[testing3,]
+    ytest3 <- dataframe$V21[testing3]
+    ytrain3 <- dataframe$V21[-testing3]
+    m3 = glm(V21~.,family=binomial,data = data.frame(V21=ytrain3,xtrain3))
+    ptest3 = predict(m3,newdata=data.frame(xtest3),type="response")
+    btest3=floor(ptest3+0.6)  ## use floor function to clamp the value to 0 or 1
+    conf.matrix3 = table(ytest3,btest3)
+    error3[i]=(conf.matrix3[1,2]+conf.matrix3[2,1])/100
+    precision3[i]=conf.matrix3[1,1]/(conf.matrix3[1,1]+conf.matrix3[2,1])
+    recall_r3[i]=conf.matrix3[1,1]/(conf.matrix3[1,1]+conf.matrix3[1,2])
+    F1_3[i]=2*precision3[i]*recall_r3[i]/(precision3[i]+recall_r3[i])
+    }
+accuracy3=1-mean(error3)
+accuracy3 
+pr3=mean(precision3)
+pr3 
+r3=mean(recall_r3)
+r3
+f3=mean(F1_3)
+f3 
+```
+
+3.a) Plot lift chart for model 3
+```{r}
+daf=cbind(ptest3,ytest3)
+daf[1:20,]
+
+```
+
+3.a)
+```{r}
+rank.df=as.data.frame(daf[order(ptest3,decreasing=TRUE),])
+colnames(rank.df) = c('predicted','actual')
+rank.df[1:20,]
+```
+
+3.a)
+```{r}
+baserate=mean(ytest3)
+baserate
+```
+
+3.a)
+```{r}
+ax=dim(n)
+ay.base=dim(n)
+ay.pred=dim(n)
+ax[1]=1
+ay.base[1]=baserate
+ay.pred[1]=rank.df$actual[1]
+for (i in 2:n) {
+  ax[i]=i
+  ay.base[i]=baserate*i ## uniformly increase with rate xbar
+  ay.pred[i]=ay.pred[i-1]+rank.df$actual[i]
+}
+
+df=cbind(rank.df,ay.pred,ay.base)
+df[1:20,]
+```
+
+3.a)
+```{r}
+plot(ax,ay.pred,xlab="number of cases",ylab="number of successes",main="Lift chart")
+points(ax,ay.base,type="l")
+```
+
+
+3.a) Plot ROC curve for model 3
+```{r}
+cut=1/2
+gg1=floor(ptest3+(1-cut))
+truepos <- ytest3==1 & ptest3>=cut 
+trueneg <- ytest3==0 & ptest3<cut
+# Sensitivity (predict default when it does happen)
+sum(truepos)/sum(ytest3==1)
+```
+
+3.a)
+```{r}
+# Specificity (predict no default when it does not happen)
+sum(trueneg)/sum(ytest3==0) 
+```
+
+3.a)
+```{r}
+suppressWarnings( library(ROCR))
+## input is a data frame consisting of two columns
+## predictions in first column and actual outcomes in the second 
+
+## ROC for hold-out period
+data=data.frame(predictions=ptest3,labels=ytest3)
+data[1:10,]
+```
+
+3.a)
+```{r}
+pred <- prediction(data$predictions,data$labels)
+str(pred)
+```
+
+3.a)
+```{r}
+perf <- performance(pred, "sens", "fpr")
+str(perf)
+```
+3.a)
+```{r}
+plot(perf)
+```
+
+3.b)
+2nd model was the best as it has the highest accuracy of 75.5%.
+Here we will dive into the each of the predictors
+
+```{r}
+mbest=glm(V21~V1+V2+V3+V4+V8+V9+V14,family=binomial(link='logit'),data=dataframe)
+mbest
+
+```
+
+3.b)
+
+```{r}
+summary(mbest)
+```
+
+3.b)
+odds of customer being bad are 0.6243176 times when V1=A12. Which means if V1=A12, customer is more likely to be good.
+```{r}
+ratio_V1A12=exp(-0.471096)
+ratio_V1A12
+```
+
+3.b)
+odds of customer being bad are 0.3419034 times when V1=A13. Which means if V1=A13, customer is more likely to be good.
+```{r}
+ratio_V1A13=exp(-1.073227)
+ratio_V1A13
+```
+
+3.b)
+odds of customer being bad are 0.1573259 times when V1=A14. Which means if V1=A14, customer is more likely to be good.
+```{r}
+ratio_V1A14=exp(-1.849436)
+ratio_V1A14
+```
+
+3.b)
+odds of customer being bad are multiplied by 1.043096 times scale of v2.
+```{r}
+ratio_V2=exp(0.042193)
+ratio_V2
+```
+
+3.b)
+odds of customer being bad are 0.6776062 times when V3=A31. Which means if V3=A31, customer is more likely to be good.
+```{r}
+ratio_V3A31=exp(-0.389189)
+ratio_V3A31
+```
+
+3.b)
+odds of customer being bad are 0.364002 times when V3=A32. Which means if V3=A32, customer is more likely to be good.
+```{r}
+ratio_V3A32=exp(-1.010596)
+ratio_V3A32
+```
+
+3.b)
+odds of customer being bad are 0.3469551 times when V3=A33. Which means if V3=A33, customer is more likely to be good.
+```{r}
+ratio_V3A33=exp(-1.058560)
+ratio_V3A33
+```
+
+3.b)
+odds of customer being bad are 0.1837638 times when V3=A34. Which means if V3=A34, customer is more likely to be good.
+```{r}
+ratio_V3A34=exp(-1.694104)
+ratio_V3A34
+```
+
+3.b)
+odds of customer being bad are 0.2527873 times when V4=A41. Which means if V4=A41, customer is more likely to be good.
+```{r}
+ratio_V4A41=exp(-1.375207)
+ratio_V4A41
+```
+
+3.b)
+odds of customer being bad are 0.5690107 times when V4=A42. Which means if V4=A42, customer is more likely to be good.
+```{r}
+ratio_V4A42=exp(-0.563856)
+ratio_V4A42
+```
+
+3.b)
+odds of customer being bad are 0.4065201 times when V4=A43. Which means if V4=A43, customer is more likely to be good.
+```{r}
+ratio_V4A43=exp(-0.900122)
+ratio_V4A43
+```
+
+3.b)
+odds of customer being bad are 0.531347 times when V4=A44. Which means if V4=A44, customer is more likely to be good.
+```{r}
+ratio_V4A44=exp(-0.632340)
+ratio_V4A44
+```
+
+
+3.b)
+odds of customer being bad are 0.8738479 times when V4=A45. Which means if V4=A45, customer is more likely to be good.
+```{r}
+ratio_V4A45=exp(-0.134849)
+ratio_V4A45
+```
+
+3.b)
+odds of customer being bad are 1.280307 times when V4=A46.
+```{r}
+ratio_V4A46=exp(0.247100)
+ratio_V4A46
+```
+
+3.b)
+odds of customer being bad are 0.1471333 times when V4=A48. Which means if V4=A48, customer is more likely to be good.
+```{r}
+ratio_V4A48=exp(-1.916416)
+ratio_V4A48
+```
+
+3.b)
+odds of customer being bad are 0.4840757 times when V4=A49. Which means if V4=A49, customer is more likely to be good.
+```{r}
+ratio_V4A49=exp(-0.725514)
+ratio_V4A49
+```
+
+3.b)
+odds of customer being bad are 0.3064432 times when V4=A410. Which means if V4=A410, customer is more likely to be good.
+```{r}
+ratio_V4A410=exp(-1.182723)
+ratio_V4A410
+```
+
+3.b)
+odds of customer being bad are multiplied by 1.236164 times scale of v8.
+```{r}
+ratio_V8=exp(0.212013)
+ratio_V8
+```
+
+3.b)
+odds of customer being bad are 0.843346 times when V9=A92. Which means if V9=A92, customer is more likely to be good.
+```{r}
+ratio_V9A92=exp(-0.170378)
+ratio_V9A92
+```
+
+3.b)
+odds of customer being bad are 0.4724232 times when V9=A93. Which means if V9=A93, customer is more likely to be good.
+```{r}
+ratio_V9A93=exp(-0.749880)
+ratio_V9A93
+```
+
+3.b)
+odds of customer being bad are 0.654327 times when V9=A94. Which means if V9=A94, customer is more likely to be good.
+```{r}
+ratio_V9A94=exp(-0.424148)
+ratio_V9A94
+```
+
+3.b)
+odds of customer being bad are 0.9909363 times when V14=A142. Which means if V14=A142, customer is more likely to be good.
+```{r}
+ratio_V14A142=exp(-0.009105)
+ratio_V14A142
+```
+
+3.b)
+odds of customer being bad are 0.5874107 times when V14=A143. Which means if V14=A143, customer is more likely to be good.
+```{r}
+ratio_V14A143=exp(-0.532031)
+ratio_V14A143
+```
+
+

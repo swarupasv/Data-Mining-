@@ -1,0 +1,339 @@
+---
+title: "Data Mining Homework 1"
+author: "Swarupa Vaishampayan"
+date: "January 20, 2018"
+output: html_document
+---
+
+Libraries used: ggplot2,MASS,FBasics
+```{r}
+library(ggplot2) #Used for plotting graphs
+library(MASS)    #Used for regression
+library(fBasics) #Used for generating summary table
+```
+
+1.
+
+load file in dataframe,view dataframe in separate window and look at the summary. Here we can see which are the numerical varibles and categorical variables. 
+There are no missing values in the dataframe.
+
+'G3' is the response variable which is to predicted using all the following variables.
+Categorical variables: 
+school,age,address,famsize,Pstatus,reason,guardian,schoolsup,famsup,paid,activities,nursery,higher,internet,romantic.
+
+Numerical variables: 
+age,Medu,Fedu,Mjob,Fjob,traveltime,studytime,failures,famrel,freetime,goout,Dalc,Walc,health,absences,G1,G2.
+
+```{r}
+dataframe=read.csv("student-mat.csv",header = T,sep = ';')
+View(dataframe) 
+summary(dataframe) 
+```
+
+2.a)
+
+Subset the dataframe into another dataframe containg "age","absences","G1","G2","G3" i.e. the numerical variables for which we have to generate the summary table. And use fBasics package to create the summary table.
+
+```{r}
+df=dataframe[,c("age","absences","G1","G2","G3")]
+basicStats(df)[c("Mean", "Stdev", "Median", "1. Quartile", "3. Quartile"),]
+```
+
+2.b)
+
+Plotting the density graph, for age. It looks like a normal distribution
+```{r}
+d_age=density(df$age)
+plot(d_age)
+```
+
+2.b)
+
+Plotting the density graph, for absences. As we can see it is a right skewed distriution.
+```{r}
+d_absences=density(df$absences)
+plot(d_absences)
+```
+
+2.b)
+
+Plotting the density graph, for G1. It is a normal distribution.
+```{r}
+d_G1=density(df$G1)
+plot(d_G1)
+
+```
+
+2.b)
+
+Plotting the density graph, for G2. It is a normal distribution
+```{r}
+d_G2=density(df$G2)
+plot(d_G2)
+
+```
+
+2.b)
+
+Plotting the density graph, for G3. It is a normal distribution.
+```{r}
+d_G3=density(df$G3)
+plot(d_G3)
+
+```
+2.c)
+
+Calculating correlation between the numerical variables and the target variable G3.
+As we can see from the results, 'absences' has the least correlation with 'G3' while 'G2' has the highest.
+```{r}
+cor(df$age,df$G3)
+cor(df$absences,df$G3)
+cor(df$G1,df$G3)
+cor(df$G2,df$G3)
+```
+
+2.c)
+
+Scatter plot of 'age' and 'G3'. The relationship appears to be non linear as correlation coefficient is -0.1615794 (weak).
+
+```{r}
+plot(df$age,df$G3,pch=4,cex.main=0.1,col="blue")
+```
+
+2.c)
+
+Scatter plot of 'absences' and 'G3'. The relationship is non-linear as the correlation coefficient is 0.03424732 (weak)
+```{r}
+plot(df$absences,df$G3,pch=4,cex.main=0.1,col="blue")
+```
+
+2.c)
+
+Scatter plot of 'G1' and 'G3'. The relationship is mostly linear as the correlation coefficient is 0.8014679 (strong)
+```{r}
+plot(df$G1,df$G3,pch=4,cex.main=0.1,col="blue")
+```
+
+2.c)
+
+Scatter plot of 'G2' and 'G3'. The relationship is linear as the correlation coefficient is 0.904868 (very strong)
+```{r}
+plot(df$G2,df$G3,pch=4,cex.main=0.1,col="blue")
+```
+
+2.d)
+
+Density plot for categorical variable 'address'
+```{r}
+ggplot(dataframe, aes(x =G3,fill=address)) + geom_density(size=1, alpha=.2,colour="grey")
+
+```
+
+2.d)
+
+Density plot for categorical variable 'Pstatus'
+```{r}
+ggplot(dataframe, aes(x =G3,fill=Pstatus)) + geom_density(size=1, alpha=.2,colour="grey")
+
+```
+
+2.d)
+
+Density plot for categorical variable 'higher'
+```{r}
+ggplot(dataframe, aes(x =G3,fill=higher)) + geom_density(size=1, alpha=.2,colour="grey")
+
+```
+
+2.d)
+
+Density plot for categorical variable 'internet'
+```{r}
+ggplot(dataframe, aes(x =G3,fill=internet)) + geom_density(size=1, alpha=.2,colour="grey")
+
+```
+
+2.e)
+
+Density plot for categorical variable 'activities'. 
+As we can see in the graph, the students with or without extra curricular activity don't show much difference in the density plot for the response variable 'G3'.
+```{r}
+ggplot(dataframe, aes(x =G3,fill=activities)) + geom_density(size=1, alpha=.2,colour="grey")
+
+```
+
+3.a)
+
+Use linear regression on the dataframe to predict response variable 'G3' and summarize the fit.
+As we can see in the summary, R-squared: 0.8458,	Adjusted R-squared: 0.8279.
+And G2, G1, absences, famrel, age are the most significant predicting variables. 
+```{r}
+fit = lm(G3 ~ school + age + address + sex + famsize + Pstatus + Medu + Fedu + Mjob + Fjob + reason + guardian + traveltime + studytime + failures + schoolsup + famsup + paid + activities + nursery + higher + internet + romantic + famrel + freetime + goout + Dalc + Walc + health + absences + G1 + G2, data=dataframe)
+summary(fit)
+```
+
+3.a)
+
+Calcualte RMSE for the fit
+```{r}
+mean.mse = mean((rep(mean(dataframe$G3),length(dataframe$G3)) - dataframe$G3)^2)
+model.mse = mean(residuals(fit)^2)
+rmse = sqrt(model.mse)
+rmse 
+```
+
+3.b)
+
+Use linear regression on the sample A.
+```{r}
+fitA = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + studytime + failures + absences + G1 + G2, data=dataframe)
+summary(fitA)
+```
+
+3.b)
+
+Use linear regression on the sample B.
+```{r}
+fitB = lm(G3 ~ school + age + sex + studytime + failures + absences + G1 + G2, data=dataframe)
+summary(fitB)
+```
+
+3.b)
+
+Use linear regression on the sample C.
+```{r}
+fitC = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + G1 + G2, data=dataframe)
+summary(fitC)
+```
+
+3.b)
+
+Now we will calculate the leave one out RMSE for all three samples A,B and C (linear fit). From all of three sample B has least RMSE: 1.928921. So its the best.
+```{r}
+n = length(dataframe$G3)
+```
+
+3.b)
+
+leave one out RMSE for sample A
+```{r}
+errorA = dim(n)
+for (k in 1:n) {
+  train1 = c(1:n)
+  train = train1[train1!=k]
+  fitA = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + studytime + failures + absences + G1 + G2, data=dataframe[train ,])
+  predA = predict(fitA, newdat=dataframe[-train ,])
+  obsA = dataframe$G3[-train]
+  errorA[k] = obsA-predA
+}
+meA=mean(errorA)
+rmseA=sqrt(mean(errorA^2))
+rmseA ## root mean square error (out-of-sample) for fit of sample A
+```
+
+3.b)
+
+leave one out RMSE for sample B
+```{r}
+errorB = dim(n)
+for (k in 1:n) {
+  train1 = c(1:n)
+  train = train1[train1!=k] ## pick elements that are different from k
+  fitB = lm(G3 ~ school + age + sex + studytime + failures + absences + G1 + G2, data=dataframe[train ,])
+  predB = predict(fitB, newdat=dataframe[-train ,])
+  obsB = dataframe$G3[-train]
+  errorB[k] = obsB-predB
+}
+meB=mean(errorB)
+rmseB=sqrt(mean(errorB^2))
+rmseB ## root mean square error (out-of-sample) for fitB
+```
+
+3.b)
+
+leave one out RMSE for sample C
+```{r}
+errorC = dim(n)
+for (k in 1:n) {
+  train1 = c(1:n)
+  train = train1[train1!=k] ## pick elements that are different from k
+  fitC = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + G1 + G2, data=dataframe[train ,])
+  predC = predict(fitC, newdat=dataframe[-train ,])
+  obsC = dataframe$G3[-train]
+  errorC[k] = obsC-predC
+}
+meC=mean(errorC)
+rmseC=sqrt(mean(errorC^2))
+rmseC ## root mean square error (out-of-sample) for fitC
+
+```
+
+3.c)
+
+Use non linear regression on sample C (First time)
+```{r}
+fitCNL = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + poly(traveltime, degree = 2) + G1 + G2, data=dataframe)
+summary(fitCNL)
+
+```
+
+3.c)
+
+Calculate leave one out RMSE for sample C for the above non linear regression.
+```{r}
+errorCNL = dim(n)
+for (k in 1:n) {
+  train1 = c(1:n)
+  train = train1[train1!=k] ## pick elements that are different from k
+  fitCNL = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + poly(traveltime, degree = 2) + G1 + G2, data=dataframe[train ,])
+  predCNL = predict(fitCNL, newdat=dataframe[-train ,])
+  obsCNL = dataframe$G3[-train]
+  errorCNL[k] = obsCNL-predCNL
+}
+meCNL=mean(errorCNL)
+rmseCNL=sqrt(mean(errorCNL^2))
+rmseCNL ## root mean square error (out-of-sample) for fitCNL
+
+```
+3.c)
+
+Use non linear regression on sample C (Second time)
+```{r}
+fitCNL2 = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + poly(traveltime, degree = 2) + poly(G1, degree = 2) + G2, data=dataframe)
+summary(fitCNL2)
+
+```
+
+3.c)
+
+Calculate leave one out RMSE for sample C for the above non linear regression.
+
+```{r}
+errorCNL2 = dim(n)
+for (k in 1:n) {
+  train1 = c(1:n)
+  train = train1[train1!=k] ## pick elements that are different from k
+  fitCNL2 = lm(G3 ~ school + age + address + sex + Pstatus + Medu + Fedu + Mjob + Fjob + poly(traveltime, degree = 2) + poly(G1, degree = 2) + G2, data=dataframe[train ,])
+  predCNL2 = predict(fitCNL2, newdat=dataframe[-train ,])
+  obsCNL2 = dataframe$G3[-train]
+  errorCNL2[k] = obsCNL2-predCNL2
+}
+meCNL2=mean(errorCNL2)
+rmseCNL2=sqrt(mean(errorCNL2^2))
+rmseCNL2 ## root mean square error (out-of-sample) for fitCNL
+
+```
+
+3.d)
+
+RMSE for all three samples A,B and C linear and non linear regressions on sample C, non linear regression on sample c (First time) has least RMSE: 1.92427. So its the best.
+
+Figuring out the most important predictor in the best model
+
+Here I used stepAIC to find the most important predictors in the sample C. And G2 is the most important predictor.
+
+```{r}
+#fitCNL is the best model
+stepAIC(fitCNL, direction="backward")
+
+```
